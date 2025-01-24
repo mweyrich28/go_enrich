@@ -55,7 +55,7 @@ public class Main
                 FileUtils.parseGAF(mapping);
             } else
             {
-                FileUtils.parseENSG(mapping);
+                FileUtils.parseENSG(mapping, dag);
             }
 
         }

@@ -46,6 +46,9 @@ public class FileUtils
                     if (dag.getNodeMap().containsKey(parentId)) // check if parent already exists
                     {
                         dag.getNodeMap().get(parentId).addChild(currentGO);
+
+                        // debug: add parents
+                        currentGO.addParent(dag.getNodeMap().get(parentId));
                     }
                     else // create parent and then add currentGO
                     {
@@ -53,6 +56,9 @@ public class FileUtils
                         GOEntry newParent = new GOEntry(parentId, parentAnnot);
                         dag.insertNode(newParent);
                         newParent.addChild(currentGO);
+
+                        // debug: add parents
+                        currentGO.addParent(newParent);
                     }
                 }
                 // clear up vars
@@ -84,7 +90,7 @@ public class FileUtils
                 desc = line.split(": ")[1];
             }
         }
-        System.out.println(dag);
+        //        System.out.println(dag);
         return dag;
     }
 
@@ -101,9 +107,60 @@ public class FileUtils
         }
     }
 
-    public static void parseENSG(String pathToENSG) throws IOException
+    public static void parseENSG(String pathToENSG, DAG dag) throws IOException
     {
+        BufferedReader bufferedReader = new BufferedReader(new FileReader(pathToENSG));
+        String line = null;
+        boolean skippedFirstLine = false;
+        while ((line = bufferedReader.readLine()) != null)
+        {
+            if (!skippedFirstLine)
+            {
+                skippedFirstLine = true;
+                continue;
+            }
 
+            StringBuilder sb = new StringBuilder();
+            boolean seenFirstTab = false;
+            boolean seenSecondTab = false;
+            String currGeneSymbol = null;
+            for (int i = 0; i < line.length(); i++)
+            {
+                if (line.charAt(i) == '\t' && !seenFirstTab)
+                {
+                    seenFirstTab = true;
+                }
+                else if (seenFirstTab && line.charAt(i) == '\t')
+                {
+                    seenSecondTab = true;
+                    // check if we even gave a gene symbol
+                    if (sb.isEmpty())
+                    {
+                        continue;
+                    }
+                    currGeneSymbol = sb.toString();
+                    sb.setLength(0);
+                }
+                else if (seenFirstTab && !seenSecondTab)
+                {
+                    sb.append(line.charAt(i));
+                }
+                else if (seenSecondTab && line.charAt(i) != '|')
+                {
+                    sb.append(line.charAt(i));
+                }
+                if (seenSecondTab && (line.charAt(i) == '|' || i == line.length() - 1))
+                {
+                    String currentGo = sb.toString();
+                    if (dag.getNodeMap().containsKey(currentGo))
+                    {
+                        dag.getNodeMap().get(currentGo).addSymbol(currGeneSymbol);
+                    }
+                    sb.setLength(0);
+                }
+            }
+
+        }
+        System.out.println();
     }
-
 }

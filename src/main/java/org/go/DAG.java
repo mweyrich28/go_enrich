@@ -10,7 +10,6 @@ public class DAG
     private String type;
 
 
-    // METHOD ADD NODE CHECK IF ALREADY IN H MAP
     public DAG(String type)
     {
         this.type = type;

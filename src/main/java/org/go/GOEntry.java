@@ -9,14 +9,14 @@ public class GOEntry
     private String annot;
     private ArrayList<GOEntry> parents;
     private ArrayList<GOEntry> children;
-    private ArrayList<Gene> genes;
+    private ArrayList<String> geneSymbols;
 
     public GOEntry(String id, String annot)
     {
         this.id = id;
         this.annot = annot;
-        this.genes = new ArrayList<>();
-//        this.parents = new ArrayList<>();
+        this.geneSymbols = new ArrayList<>();
+        this.parents = new ArrayList<>();
         this.children = new ArrayList<>();
     }
 
@@ -33,14 +33,14 @@ public class GOEntry
         return id;
     }
 
-    public void addGene(Gene gene)
+    public void addSymbol(String geneId)
     {
-        this.genes.add(gene);
+        this.geneSymbols.add(geneId);
     }
 
-    public void addParents(ArrayList<String> parents)
+    public void addParent(GOEntry parent)
     {
-
+        this.parents.add(parent);
     }
 
     public void addChild(GOEntry child)
@@ -56,7 +56,7 @@ public class GOEntry
     @Override
     public String toString()
     {
-        return this.id + "\t" + this.annot + "\n\t" + children.size();
+        return this.id + "\t" + this.annot + "\n\tHas " + children.size() + " many children.";
     }
 
 }
