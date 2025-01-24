@@ -1,12 +1,12 @@
 package org.go;
 
-import jdk.jshell.EvalException;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -26,8 +26,8 @@ public class Main
         {
             parser.addArgument("-obo").required(true).help("Path to obo file.");
             parser.addArgument("-root").required(true).help("Type of Ontology (molecular_function|biological_process|cellular_component).");
-            parser.addArgument("-mapping").required(true).help("Path to mapping file (gene -> GO).");
-            parser.addArgument("-mappingtype").required(true).help("Format of the mapping-File.");
+            parser.addArgument("-mapping").required(true).help("Path to mapping file (SYMBOL -> GO_ID).");
+            parser.addArgument("-mappingtype").required(true).help("Format of the mapping-File (go|ensembl).");
             parser.addArgument("-overlapout").help("Information about DAG entries with shared mapped genes is written into this file.");
             parser.addArgument("-enrich").required(true).help("Path to enrichment analysis file.");
             parser.addArgument("-o").required(true).help("Path to output file.");
@@ -46,18 +46,39 @@ public class Main
             int min = Integer.parseInt(ns.getString("minsize"));
             int max = Integer.parseInt(ns.getString("maxsize"));
 
+            // validate params
             validateParams(root, mappingType);
 
-            DAG dag = FileUtils.parseObo(obo, root);
+            // init DAG
+            DAG dag = FileUtils.parseOBO(obo, root);
 
+            // read mapping
             if (mappingType.equals("go"))
             {
-                FileUtils.parseGAF(mapping);
-            } else
+                FileUtils.parseGAF(mapping, dag);
+            }
+            else
             {
-                FileUtils.parseENSG(mapping, dag);
+                FileUtils.parseENSEMBL(mapping, dag);
             }
 
+            // read enriched genes
+            HashMap<String, Gene> enrichedGeneMap = FileUtils.parseEnrichedGenes(enrich, dag);
+            HashSet<String> enrichedGeneSet = new HashSet<>(enrichedGeneMap.keySet());
+            HashSet<String> enrichedSigGeneSet = new HashSet<>();
+            for (String key : enrichedGeneMap.keySet())
+            {
+                if (enrichedGeneMap.get(key).isSig()) {
+                    enrichedSigGeneSet.add(key);
+                }
+            }
+
+            dag.propagateGenes();
+            dag.calculateDepth();
+
+            // init main analysis class
+            EnrichmentAnalysis enrichmentAnalysis = new EnrichmentAnalysis(dag, enrichedGeneMap, min, max, overlapOut, out);
+            enrichmentAnalysis.analyze();
         }
         catch (ArgumentParserException e)
         {

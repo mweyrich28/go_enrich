@@ -1,13 +1,19 @@
 package org.go;
 
+import org.go.util.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class DAG
 {
 
+    private static final Logger logger = LoggerFactory.getLogger(DAG.class);
     private HashMap<String, GOEntry> nodeMap;
     private String type;
+    private GOEntry root = null;
 
 
     public DAG(String type)
@@ -34,7 +40,8 @@ public class DAG
             if (nodeMap.get(goId).getChildren().size() == 0)
             {
                 sb.append("\t STOP");
-            } else
+            }
+            else
             {
                 sb.append("\tCHILDREN ->");
                 sb.append("\t");
@@ -51,8 +58,35 @@ public class DAG
         return sb.toString();
     }
 
+    public void setRoot(GOEntry root)
+    {
+        if (this.root == null)
+        {
+            this.root = root;
+        }
+    }
+
+
     public HashMap<String, GOEntry> getNodeMap()
     {
         return nodeMap;
+    }
+
+    public void propagateGenes()
+    {
+        logger.info("Propagating Symbols through DAG...");
+        double start = System.currentTimeMillis();
+        root.inheritGeneSymbols();
+        logger.info(String.format("Time needed for propagating Symbols: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
+    }
+
+    public void calculateDepth()
+    {
+
+        logger.info("Calculating depth...");
+        double start = System.currentTimeMillis();
+        this.root.setDepth(0);
+        this.root.passDepth();
+        logger.info(String.format("Time needed for calculating depth: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 }

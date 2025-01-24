@@ -1,21 +1,23 @@
 package org.go;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 public class GOEntry
 {
-
     private String id;
     private String annot;
+    private boolean isTrue;
     private ArrayList<GOEntry> parents;
     private ArrayList<GOEntry> children;
-    private ArrayList<String> geneSymbols;
+    private HashSet<String> geneSymbols;
+    private int depth;
 
     public GOEntry(String id, String annot)
     {
         this.id = id;
         this.annot = annot;
-        this.geneSymbols = new ArrayList<>();
+        this.geneSymbols = new HashSet<>();
         this.parents = new ArrayList<>();
         this.children = new ArrayList<>();
     }
@@ -56,7 +58,50 @@ public class GOEntry
     @Override
     public String toString()
     {
-        return this.id + "\t" + this.annot + "\n\tHas " + children.size() + " many children.";
+        return this.depth + "\t" + this.id + "\t" + this.annot + "\t" + children.size();
     }
 
+    public void setTrue()
+    {
+        isTrue = true;
+    }
+
+    public void inheritGeneSymbols()
+    {
+        for (GOEntry child: children)
+        {
+            child.inheritGeneSymbols();
+            this.getGeneSymbols().addAll(child.geneSymbols);
+        }
+    }
+
+    public HashSet<String> getGeneSymbols()
+    {
+        return geneSymbols;
+    }
+
+    public void setDepth(int depth)
+    {
+        this.depth = depth;
+    }
+    public void passDepth()
+    {
+        int newDepth = this.depth;
+        newDepth++;
+        for (GOEntry child : children)
+        {
+            child.setDepth(newDepth);
+            child.passDepth();
+        }
+    }
+
+    public String getAnnot()
+    {
+        return annot;
+    }
+
+    public boolean isTrue()
+    {
+        return isTrue;
+    }
 }
