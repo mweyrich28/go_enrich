@@ -51,7 +51,8 @@ public class FileUtils
                 }
 
                 // check if we got root
-                if (desc.equals(type)) {
+                if (desc.equals(type))
+                {
                     dag.setRoot(currentGO);
                 }
 
@@ -83,25 +84,39 @@ public class FileUtils
                 namespace = null;
                 desc = null;
             }
-            else if (line.charAt(0) == 'i' && line.charAt(3) == 'o') // ignore entire entry
+            // reset vars if above condition is not met
+            else if (line.startsWith("["))
+            {
+                parents.clear();
+                currNodeId = null;
+                namespace = null;
+                desc = null;
+            }
+            // ignore entire entry
+            else if (line.charAt(0) == 'i' && line.charAt(3) == 'o')
             {
                 currNodeId = null;
                 namespace = null;
+                desc = null;
                 parents.clear();
             }
-            else if (line.charAt(0) == 'i' && line.charAt(1) == 'd') // hit new entry id
+            // hit new entry id
+            else if (line.charAt(0) == 'i' && line.charAt(1) == 'd')
             {
                 currNodeId = line.split(" ")[1];
             }
-            else if (line.charAt(0) == 'i' && line.charAt(3) == 'a') // hit new parent of entry id
+            // hit new parent of entry id
+            else if (line.charAt(0) == 'i' && line.charAt(3) == 'a')
             {
                 parents.add(line);
             }
-            else if (line.charAt(0) == 'n' && line.charAt(5) == 'p') // hit new parent of entry id
+            // hit new parent of entry id
+            else if (line.charAt(0) == 'n' && line.charAt(5) == 'p')
             {
                 namespace = line.split(" ")[1];
             }
-            else if (line.charAt(0) == 'n' && line.charAt(4) == ':') // hit desc of node
+            // hit desc of node
+            else if (line.charAt(0) == 'n' && line.charAt(4) == ':')
             {
                 desc = line.split(": ")[1];
             }

@@ -82,11 +82,15 @@ public class DAG
 
     public void calculateDepth()
     {
-
         logger.info("Calculating depth...");
         double start = System.currentTimeMillis();
         this.root.setDepth(0);
         this.root.passDepth();
         logger.info(String.format("Time needed for calculating depth: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
+    }
+
+    public GOEntry getRoot()
+    {
+        return root;
     }
 }

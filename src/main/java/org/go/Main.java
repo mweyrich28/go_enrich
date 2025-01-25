@@ -64,15 +64,8 @@ public class Main
 
             // read enriched genes
             HashMap<String, Gene> enrichedGeneMap = FileUtils.parseEnrichedGenes(enrich, dag);
-            HashSet<String> enrichedGeneSet = new HashSet<>(enrichedGeneMap.keySet());
-            HashSet<String> enrichedSigGeneSet = new HashSet<>();
-            for (String key : enrichedGeneMap.keySet())
-            {
-                if (enrichedGeneMap.get(key).isSig()) {
-                    enrichedSigGeneSet.add(key);
-                }
-            }
 
+            // fully init DAG
             dag.propagateGenes();
             dag.calculateDepth();
 
