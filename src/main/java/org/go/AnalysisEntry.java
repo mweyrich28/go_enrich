@@ -7,7 +7,7 @@ import java.math.RoundingMode;
 public class AnalysisEntry
 {
 
-    private DecimalFormat df = new DecimalFormat("#.######");
+    private DecimalFormat df = new DecimalFormat("0.#####E0");
     private String term;
     private String name;
     private int size;
@@ -24,6 +24,7 @@ public class AnalysisEntry
 
     public AnalysisEntry(String goId)
     {
+        this.df.setMaximumFractionDigits(5);
         this.term = goId;
     }
 
@@ -166,14 +167,20 @@ public class AnalysisEntry
         sb.append(this.size).append("\t");
         sb.append(this.is_true).append("\t");
         sb.append(this.noverlap).append("\t");
-        sb.append(df.format(this.hg_pval)).append("\t");
-        sb.append(df.format(this.hg_fdr)).append("\t");
-        sb.append(df.format(this.fej_pval)).append("\t");
-        sb.append(df.format(this.fej_fdr)).append("\t");
-        sb.append(df.format(this.ks_stat)).append("\t");
-        sb.append(df.format(this.ks_pval)).append("\t");
-        sb.append(df.format(this.ks_fdr)).append("\t");
+        sb.append(formatValue(this.hg_pval)).append("\t");
+        sb.append(formatValue(this.hg_fdr)).append("\t");
+        sb.append(formatValue(this.fej_pval)).append("\t");
+        sb.append(formatValue(this.fej_fdr)).append("\t");
+        sb.append(formatValue(this.ks_stat)).append("\t");
+        sb.append(formatValue(this.ks_pval)).append("\t");
+        sb.append(formatValue(this.ks_fdr)).append("\t");
         sb.append(this.shortest_path_to_a_true);
+
         return sb.toString();
+    }
+
+    public String formatValue(double value)
+    {
+        return String.format("%.5e", value);
     }
 }

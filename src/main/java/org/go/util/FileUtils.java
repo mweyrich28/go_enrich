@@ -39,7 +39,6 @@ public class FileUtils
             if (line.charAt(0) == '[' && currNodeId != null && namespace.equals(type))
             {
                 GOEntry currentGO;
-
                 if (dag.getNodeMap().containsKey(currNodeId)) // check if node is already in dag
                 {
                     currentGO = dag.getNodeMap().get(currNodeId);
@@ -142,45 +141,15 @@ public class FileUtils
             {
                 continue;
             }
-
-            int seenTabs = 0;
-            StringBuilder sb = new StringBuilder();
-            String geneSymbol = null;
-            String goName;
-            for (int i = 0; i < line.length(); i++)
+            String[] comp = line.split("\t");
+            if(!comp[3].isEmpty()) {
+                continue;
+            }
+            String geneSymbol = comp[2];
+            String goName = comp[4];
+            if (dag.getNodeMap().containsKey(goName))
             {
-                if (line.charAt(i) == '\t')
-                {
-                    seenTabs++;
-                }
-
-                if (seenTabs == 2 && line.charAt(i) != '\t')
-                {
-                    sb.append(line.charAt(i));
-                }
-                else if (seenTabs == 3 && !sb.isEmpty()) // we can save gene symbol
-                {
-                    geneSymbol = sb.toString();
-                    if (geneSymbol.isEmpty())
-                    {
-                        break;
-                    }
-                    sb.setLength(0);
-                }
-                else if (seenTabs == 4 && line.charAt(i) != '\t')
-                {
-                    sb.append(line.charAt(i));
-                }
-                else if (seenTabs == 5) // we can add symbol to go entry
-                {
-                    goName = sb.toString();
-                    sb.setLength(0);
-                    if (dag.getNodeMap().containsKey(goName))
-                    {
-                        dag.getNodeMap().get(goName).addSymbol(geneSymbol);
-                    }
-                    break;
-                }
+                dag.getNodeMap().get(goName).addSymbol(geneSymbol);
             }
         }
         logger.info(String.format("Time needed for parsing gaf: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
