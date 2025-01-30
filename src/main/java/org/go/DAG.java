@@ -112,6 +112,20 @@ public class DAG
         logger.info(String.format("Time needed for propagating GO Ids: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
+    public void optimizePathsToTrue()
+    {
+        for(GOEntry truth: this.getTrueGoEntries())
+        {
+            truth.signalShortestPath(0, truth);
+        }
+
+        for(GOEntry truth: this.getTrueGoEntries())
+        {
+            root.propagateShortestPaths(truth);
+        }
+
+    }
+
     public void calculateDepth()
     {
         logger.info("Calculating depth...");

@@ -69,6 +69,7 @@ public class Main
             dag.propagateGenes();
             dag.calculateDepth();
             dag.propagateIds();
+            dag.optimizePathsToTrue();
 
             // init main analysis class
             EnrichmentAnalysis enrichmentAnalysis = new EnrichmentAnalysis(dag, enrichedGeneMap, min, max, overlapOut, out);

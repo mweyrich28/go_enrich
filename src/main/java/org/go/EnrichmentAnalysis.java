@@ -108,17 +108,13 @@ public class EnrichmentAnalysis
             ksPvalsList.add(ksStats[1]);
 
             // ----------- shortest_path_to_a_true ------------------
-            if (go.getId().equals("GO:0002221"))
-            {
-                System.out.println();
-            }
             if (go.isTrue() || dag.getTrueGoEntries().isEmpty())
             {
                 entry.setShortest_path_to_a_true("");
             }
             else
             {
-                String path = go.getShortestPathToTrue(dag.getTrueGoIds(), dag);
+                String path = go.getShortestPathToTrueNewNew(dag.getTrueGoIds(), dag);
                 entry.setShortest_path_to_a_true(path);
             }
 
