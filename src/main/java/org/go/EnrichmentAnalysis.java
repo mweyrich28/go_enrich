@@ -98,7 +98,7 @@ public class EnrichmentAnalysis
             entry.setFej_pval(fejpval);
             fejPvalsList.add(fejpval);
 
-            // ----------- ks_stat ------------------
+            // ---------------- ks_stat, ks_pval ------------------------------
             HashSet<String> bg = new HashSet<>(dag.getRoot().getGeneSymbols());
             bg.removeAll(overlappingEnriched);
 
@@ -106,13 +106,24 @@ public class EnrichmentAnalysis
             entry.setKs_stat(ksStats[0]);
             entry.setKs_pval(ksStats[1]);
             ksPvalsList.add(ksStats[1]);
-            // ----------- ks_pval ------------------
-            // ----------- ks_fdr -------------------
+
             // ----------- shortest_path_to_a_true ------------------
+            if (go.getId().equals("GO:0002221"))
+            {
+                System.out.println();
+            }
+            if (go.isTrue() || dag.getTrueGoEntries().isEmpty())
+            {
+                entry.setShortest_path_to_a_true("");
+            }
+            else
+            {
+                String path = go.getShortestPathToTrue(dag.getTrueGoIds(), dag);
+                entry.setShortest_path_to_a_true(path);
+            }
 
-
-            //            break;
         }
+
         // -------------------- fdrs ---------------------------
         double s = System.currentTimeMillis();
         ArrayList<Double> adjHgPvals = calculateBH_FDR(hgPvalsList);
@@ -122,15 +133,10 @@ public class EnrichmentAnalysis
         for (AnalysisEntry entry : rows)
         {
 
-            if (entry.getTerm().equals("GO:2000117")) {
-                System.out.println();
-            }
             entry.setHg_fdr(adjHgPvals.get(i));
             entry.setFej_fdr(adjFejPvals.get(i));
             entry.setKs_fdr(adjKsPvals.get(i));
             i++;
-            //            System.out.println(entry);
-            //            if (i == 4) break;
             buff.write("\n");
             buff.write(entry.toString());
         }
@@ -175,11 +181,11 @@ public class EnrichmentAnalysis
         return hg.upperCumulativeProbability(k);
     }
 
-    public ArrayList<Double> calculateBH_FDR(ArrayList<Double> pValues)
+    public ArrayList<Double> calculateBH_FDROld(ArrayList<Double> pValues)
     {
         int m = pValues.size();
         ArrayList<Double> sortedPValues = new ArrayList<>(pValues);
-        ArrayList<Double> bhAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 0.0));
+        ArrayList<Double> bhAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 1.0));
 
         HashMap<Double, Integer> pValueToIndex = new HashMap<>();
         for (int i = 0; i < m; i++)
@@ -205,11 +211,60 @@ public class EnrichmentAnalysis
             }
         }
 
-        ArrayList<Double> finalAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 0.0));
+        ArrayList<Double> finalAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 1.0));
         for (int i = 0; i < m; i++)
         {
             int originalIndex = pValueToIndex.get(sortedPValues.get(i));
             finalAdjustedPValues.set(originalIndex, bhAdjustedPValues.get(i));
+        }
+
+        return finalAdjustedPValues;
+    }
+
+    public ArrayList<Double> calculateBH_FDR(ArrayList<Double> pValues)
+    {
+        int m = pValues.size();
+        ArrayList<Double> sortedPValues = new ArrayList<>(pValues);
+        ArrayList<Double> bhAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 1.0));
+
+        HashMap<Double, ArrayList<Integer>> pValueToIndices = new HashMap<>();
+        for (int i = 0; i < m; i++)
+        {
+            double pValue = pValues.get(i);
+            pValueToIndices.computeIfAbsent(pValue, k -> new ArrayList<>()).add(i);
+        }
+
+        sortedPValues.sort(Double::compareTo);
+
+        for (int i = 0; i < m; i++)
+        {
+            int rank = i + 1;
+            double rawPValue = sortedPValues.get(i);
+            double adjustedPValue = rawPValue * m / rank;
+            bhAdjustedPValues.set(i, Math.min(adjustedPValue, 1.0));
+        }
+
+        for (int i = m - 2; i >= 0; i--)
+        {
+            if (bhAdjustedPValues.get(i) > bhAdjustedPValues.get(i + 1))
+            {
+                bhAdjustedPValues.set(i, bhAdjustedPValues.get(i + 1));
+            }
+        }
+
+        ArrayList<Double> finalAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 1.0));
+        for (int i = 0; i < m; i++)
+        {
+            double pValue = sortedPValues.get(i);
+            ArrayList<Integer> originalIndices = pValueToIndices.get(pValue);
+            double adjustedPValue = bhAdjustedPValues.get(i);
+
+            for (int originalIndex : originalIndices)
+            {
+                finalAdjustedPValues.set(originalIndex, adjustedPValue);
+            }
+
+            originalIndices.clear();
         }
 
         return finalAdjustedPValues;

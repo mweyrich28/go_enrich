@@ -1,11 +1,11 @@
 package org.go;
 
-import org.go.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class DAG
 {
@@ -14,12 +14,16 @@ public class DAG
     private HashMap<String, GOEntry> nodeMap;
     private String type;
     private GOEntry root = null;
+    private HashSet<GOEntry> trueGoEntries;
+    private HashSet<String> trueGoIds;
 
 
     public DAG(String type)
     {
         this.type = type;
         this.nodeMap = new HashMap<>();
+        this.trueGoEntries = new HashSet<>();
+        this.trueGoIds = new HashSet<>();
     }
 
     public void insertNode(GOEntry go)
@@ -28,6 +32,26 @@ public class DAG
         {
             nodeMap.put(go.getId(), go);
         }
+    }
+
+    public void addTrueGoEntry(GOEntry go)
+    {
+        this.trueGoEntries.add(go);
+    }
+
+    public void addTrueGoId(String id)
+    {
+        this.trueGoIds.add(id);
+    }
+
+    public HashSet<String> getTrueGoIds()
+    {
+        return trueGoIds;
+    }
+
+    public HashSet<GOEntry> getTrueGoEntries()
+    {
+        return trueGoEntries;
     }
 
     @Override
@@ -78,6 +102,14 @@ public class DAG
         double start = System.currentTimeMillis();
         root.inheritGeneSymbols();
         logger.info(String.format("Time needed for propagating Symbols: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
+    }
+
+    public void propagateIds()
+    {
+        logger.info("Propagating GO Ids through DAG...");
+        double start = System.currentTimeMillis();
+        root.inheritGoIds();
+        logger.info(String.format("Time needed for propagating GO Ids: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
     public void calculateDepth()

@@ -62,8 +62,6 @@ public class FileUtils
                     if (dag.getNodeMap().containsKey(parentId)) // check if parent already exists
                     {
                         dag.getNodeMap().get(parentId).addChild(currentGO);
-
-                        // debug: add parents
                         currentGO.addParent(dag.getNodeMap().get(parentId));
                     }
                     else // create parent and then add currentGO
@@ -72,8 +70,6 @@ public class FileUtils
                         GOEntry newParent = new GOEntry(parentId, parentAnnot);
                         dag.insertNode(newParent);
                         newParent.addChild(currentGO);
-
-                        // debug: add parents
                         currentGO.addParent(newParent);
                     }
                 }
@@ -231,6 +227,8 @@ public class FileUtils
                 if (dag.getNodeMap().containsKey(trueGoId))
                 {
                     dag.getNodeMap().get(trueGoId).setTrue();
+                    dag.addTrueGoEntry(dag.getNodeMap().get(trueGoId));
+                    dag.addTrueGoId(trueGoId);
                 }
                 else
                 {
