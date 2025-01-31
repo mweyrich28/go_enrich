@@ -114,7 +114,7 @@ public class EnrichmentAnalysis
             }
             else
             {
-                String path = go.getShortestPathToTrueNewNew(dag.getTrueGoIds(), dag);
+                String path = go.getShortestPathToTrue(dag.getTrueGoIds(), dag);
                 entry.setShortest_path_to_a_true(path);
             }
 
