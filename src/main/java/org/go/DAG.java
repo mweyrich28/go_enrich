@@ -114,17 +114,34 @@ public class DAG
 
     public void optimizePathsToTrue()
     {
+        logger.info("Optimizing paths to true GOs in DAG...");
+        double start = System.currentTimeMillis();
         for(GOEntry truth: this.getTrueGoEntries())
         {
-            truth.signalShortestPath(0, truth);
+            truth.signalShortestPathUp(0, truth);
         }
-
         for(GOEntry truth: this.getTrueGoEntries())
         {
-            root.propagateShortestPaths(truth);
+            truth.signalShortestPathDown(0, truth);
         }
 
+//        for(GOEntry truth: this.getTrueGoEntries())
+//        {
+//            root.propagateShortestPaths(truth);
+//        }
+//
+//        for(GOEntry truth: this.getTrueGoEntries())
+//        {
+//            root.checkDirectPaths(truth);
+//        }
+//
+//        for(GOEntry truth: this.getTrueGoEntries())
+//        {
+//            root.updatePathDistances(truth);
+//        }
+        logger.info(String.format("Time needed for optimizing paths: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
+
 
     public void calculateDepth()
     {

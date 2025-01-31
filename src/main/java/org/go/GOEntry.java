@@ -127,6 +127,10 @@ public class GOEntry
             return "";
         }
 
+        if (this.id.equals("GO:1903531"))
+        {
+            System.out.println();
+        }
 
         GOEntry target = null;
         int c = Integer.MAX_VALUE;
@@ -156,7 +160,8 @@ public class GOEntry
             {
                 seenLCA = true;
                 sb.append("|").append(curr.annot).append(" * ");
-                if (curr.id.equals(target.id)) {
+                if (curr.id.equals(target.id))
+                {
                     break;
                 }
             }
@@ -168,34 +173,24 @@ public class GOEntry
             curr = curr.highwayMap.get(target).getGo();
             if (curr.id.equals(target.id))
             {
-                sb.append("|").append(curr.annot);
+                if (seenLCA)
+                {
+                    sb.append("|").append(curr.annot);
+                }
+                else
+                {
+                    sb.append("|").append(curr.annot).append(" * ");
+                }
+                break;
+            }
+
+            // extra check
+            if (groundTruth.contains(curr.id))
+            {
+                sb.append("|").append(curr.annot).append(" * ");
                 break;
             }
         }
-//        System.out.println(sb);
-
-        //        GOEntry curr = LCA;
-        //        while (visited.containsKey(curr))
-        //        {
-        //            if (curr.id.equals(LCA.id))
-        //            {
-        //                sb.append(curr.annot).append(" * ");
-        //            }
-        //            else
-        //            {
-        //                sb.insert(0, curr.annot + "|");
-        //            }
-        //            GOEntry p = visited.get(curr);
-        //            curr = p;
-        //        }
-        //
-        //        curr = LCA;
-        //        while (curr.highwayMap.containsKey(dag.getNodeMap().get(closestTrueGO)))
-        //        {
-        //            curr = curr.highwayMap.get(dag.getNodeMap().get(closestTrueGO)).getGo();
-        //            sb.append("|").append(curr.annot);
-        //        }
-
 
         return sb.toString();
     }
@@ -438,7 +433,7 @@ public class GOEntry
         return "";
     }
 
-    public void signalShortestPath(int k, GOEntry trueGo)
+    public void signalShortestPathUp(int k, GOEntry trueGo)
     {
         k++;
         for (GOEntry parent : parents)
@@ -456,31 +451,52 @@ public class GOEntry
                     parent.highwayMap.get(trueGo).setK(k);
                 }
             }
-            parent.signalShortestPath(k, trueGo);
+            parent.signalShortestPathUp(k, trueGo);
         }
     }
+
+    public void signalShortestPathDown(int k, GOEntry trueGo)
+    {
+        k++;
+        for (GOEntry child : this.children)
+        {
+            if (!child.highwayMap.containsKey(trueGo))
+            {
+                LinkerClass link = new LinkerClass(this, k);
+                child.highwayMap.put(trueGo, link);
+            }
+            else
+            {
+                if (child.highwayMap.get(trueGo).getK() > k)
+                {
+                    child.highwayMap.get(trueGo).setGo(this);
+                    child.highwayMap.get(trueGo).setK(k);
+                }
+            }
+            child.signalShortestPathUp(k, trueGo);
+        }
+    }
+
 
     public HashMap<GOEntry, LinkerClass> getHighwayMap()
     {
         return highwayMap;
     }
 
-    public void propagateShortestPaths(GOEntry trueGo)
+    public void propagateShortestPathsOld(GOEntry trueGo)
     {
-        // First, check if we have a path to this trueGo
         LinkerClass currentPath = highwayMap.get(trueGo);
         int currentK = currentPath != null ? currentPath.getK() : Integer.MAX_VALUE;
 
-        // Check all children
         for (GOEntry child : children)
-        {  // Assuming you have a children collection
+        {
             LinkerClass childPath = child.highwayMap.get(trueGo);
             int childK = childPath != null ? childPath.getK() : Integer.MAX_VALUE;
 
-            // If we have a better path than the child's current path
+
             if (currentK != Integer.MAX_VALUE && currentK + 1 < childK)
             {
-                // Either create new or update existing path
+
                 if (childPath == null)
                 {
                     childPath = new LinkerClass(this, currentK + 1);
@@ -493,8 +509,98 @@ public class GOEntry
                 }
             }
 
-            // Always propagate to children to ensure complete coverage
             child.propagateShortestPaths(trueGo);
+        }
+    }
+
+    public void propagateShortestPaths(GOEntry trueGo)
+    {
+        LinkerClass currentPath = highwayMap.get(trueGo);
+        if (currentPath != null)
+        {
+            GOEntry nextNode = currentPath.getGo();
+            if (nextNode.highwayMap.containsKey(trueGo))
+            {
+                int pathThroughLinker = nextNode.highwayMap.get(trueGo).getK() + 1;
+                if (pathThroughLinker < currentPath.getK())
+                {
+                    currentPath.setK(pathThroughLinker);
+                }
+            }
+        }
+
+        int currentK = currentPath != null ? currentPath.getK() : Integer.MAX_VALUE;
+        for (GOEntry child : children)
+        {
+            LinkerClass childPath = child.highwayMap.get(trueGo);
+            int childK = childPath != null ? childPath.getK() : Integer.MAX_VALUE;
+
+            if (currentK != Integer.MAX_VALUE && currentK + 1 < childK)
+            {
+                if (childPath == null)
+                {
+                    childPath = new LinkerClass(this, currentK + 1);
+                    child.highwayMap.put(trueGo, childPath);
+                }
+                else
+                {
+                    childPath.setGo(this);
+                    childPath.setK(currentK + 1);
+                }
+            }
+            child.propagateShortestPaths(trueGo);
+        }
+    }
+
+    public void checkDirectPaths(GOEntry trueGo)
+    {
+        for (GOEntry parent : parents)
+        {
+            if (parent.equals(trueGo))
+            {
+                LinkerClass directPath = new LinkerClass(parent, 1);
+                this.highwayMap.put(trueGo, directPath);
+            }
+        }
+
+        for (GOEntry child : children)
+        {
+            child.checkDirectPaths(trueGo);
+        }
+    }
+
+    public void updatePathDistances(GOEntry trueGo)
+    {
+        boolean updated = false;
+        LinkerClass currentPath = highwayMap.get(trueGo);
+
+        if (currentPath != null)
+        {
+            GOEntry nextHop = currentPath.getGo();
+            LinkerClass nextPath = nextHop.highwayMap.get(trueGo);
+
+            if (nextPath != null)
+            {
+                int betterDistance = nextPath.getK() + 1;
+                if (betterDistance < currentPath.getK())
+                {
+                    currentPath.setK(betterDistance);
+                    updated = true;
+                }
+            }
+        }
+
+        if (updated)
+        {
+            for (GOEntry parent : parents)
+            {
+                parent.updatePathDistances(trueGo);
+            }
+        }
+
+        for (GOEntry child : children)
+        {
+            child.updatePathDistances(trueGo);
         }
     }
 }

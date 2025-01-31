@@ -30,4 +30,10 @@ public class LinkerClass
     {
         this.k = k;
     }
+
+    @Override
+    public String toString()
+    {
+        return this.k +" nodes away. Follow -> " + this.getGo().getId();
+    }
 }
