@@ -122,13 +122,13 @@ public class DAG
         }
         for(GOEntry truth: this.getTrueGoEntries())
         {
+            root.propagateShortestPaths(truth);
+        }
+        for(GOEntry truth: this.getTrueGoEntries())
+        {
             truth.signalShortestPathDown(0, truth);
         }
 
-//        for(GOEntry truth: this.getTrueGoEntries())
-//        {
-//            root.propagateShortestPaths(truth);
-//        }
 //
 //        for(GOEntry truth: this.getTrueGoEntries())
 //        {
