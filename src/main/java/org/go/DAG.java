@@ -3,9 +3,7 @@ package org.go;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 public class DAG
 {
@@ -116,32 +114,20 @@ public class DAG
     {
         logger.info("Optimizing paths to true GOs in DAG...");
         double start = System.currentTimeMillis();
-        for(GOEntry truth: this.getTrueGoEntries())
+        for (GOEntry truth : this.getTrueGoEntries())
         {
             truth.signalShortestPathUp(0, truth);
         }
-        for(GOEntry truth: this.getTrueGoEntries())
+        for (GOEntry truth : this.getTrueGoEntries())
         {
             root.propagateShortestPaths(truth);
         }
-        for(GOEntry truth: this.getTrueGoEntries())
+        for (GOEntry truth : this.getTrueGoEntries())
         {
             truth.signalShortestPathDown(0, truth);
         }
-
-//
-//        for(GOEntry truth: this.getTrueGoEntries())
-//        {
-//            root.checkDirectPaths(truth);
-//        }
-//
-//        for(GOEntry truth: this.getTrueGoEntries())
-//        {
-//            root.updatePathDistances(truth);
-//        }
         logger.info(String.format("Time needed for optimizing paths: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
-
 
     public void calculateDepth()
     {

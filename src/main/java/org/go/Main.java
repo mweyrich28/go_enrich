@@ -72,8 +72,14 @@ public class Main
             dag.optimizePathsToTrue();
 
             // init main analysis class
-            EnrichmentAnalysis enrichmentAnalysis = new EnrichmentAnalysis(dag, enrichedGeneMap, min, max, overlapOut, out);
+            EnrichmentAnalysis enrichmentAnalysis = new EnrichmentAnalysis(dag, enrichedGeneMap, min, max, out);
             enrichmentAnalysis.analyze();
+
+            if (overlapOut != null)
+            {
+                // generate overlap file
+                enrichmentAnalysis.goFeatures(overlapOut);
+            }
         }
         catch (ArgumentParserException e)
         {

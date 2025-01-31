@@ -232,7 +232,6 @@ public class GOEntry
             child.signalShortestPathDown(k, trueGo);
         }
     }
-
     public void propagateShortestPaths(GOEntry trueGo)
     {
         LinkerClass currentPath = highwayMap.get(trueGo);
@@ -271,4 +270,15 @@ public class GOEntry
             child.propagateShortestPaths(trueGo);
         }
     }
+
+    public HashSet<String> getReachableGoIDs()
+    {
+        return reachableGoIDs;
+    }
+
+    public ArrayList<GOEntry> getParents()
+    {
+        return parents;
+    }
+
 }

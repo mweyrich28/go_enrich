@@ -1,13 +1,8 @@
 package org.go;
 
-import java.text.DecimalFormat;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
 public class AnalysisEntry
 {
 
-    private DecimalFormat df = new DecimalFormat("0.#####E0");
     private String term;
     private String name;
     private int size;
@@ -24,7 +19,6 @@ public class AnalysisEntry
 
     public AnalysisEntry(String goId)
     {
-        this.df.setMaximumFractionDigits(5);
         this.term = goId;
     }
 

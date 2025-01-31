@@ -17,7 +17,6 @@ public class EnrichmentAnalysis
     private DAG dag;
     private HashMap<String, Gene> enrichedGeneMap;
     private KolmogorovSmirnovTest ks = new KolmogorovSmirnovTest();
-    private String overlapOut;
     private String out;
     private int min;
     private int max;
@@ -25,12 +24,11 @@ public class EnrichmentAnalysis
     private HashSet<String> enrichedAll;
     private HashSet<String> enrichedNotSigs = new HashSet<>();
 
-    public EnrichmentAnalysis(DAG dag, HashMap<String, Gene> enrichedGeneMap, int min, int max, String overlapOut, String out)
+    public EnrichmentAnalysis(DAG dag, HashMap<String, Gene> enrichedGeneMap, int min, int max, String out)
     {
 
         this.dag = dag;
         this.enrichedGeneMap = enrichedGeneMap;
-        this.overlapOut = overlapOut;
         this.out = out;
         this.min = min;
         this.max = max;
@@ -47,6 +45,55 @@ public class EnrichmentAnalysis
                 this.enrichedNotSigs.add(gene.getSymbol());
             }
         }
+    }
+
+    public void goFeatures(String pathToOverlapOut) throws IOException
+    {
+        logger.info("Collecting GO features...");
+        BufferedWriter buff = new BufferedWriter(new FileWriter(pathToOverlapOut));
+        buff.write("term1\tterm2\tis_relative\tpath_length\tnum_overlapping\tmax_ov_percent");
+        double start = System.currentTimeMillis();
+
+        ArrayList<GOEntry> goEntries = new ArrayList<>(dag.getNodeMap().values());
+        for (int i = 0; i < goEntries.size(); i++)
+        {
+            GOEntry term1 = goEntries.get(i);
+            if (!(term1.getGeneSymbols().size() >= min && term1.getGeneSymbols().size() <= max))
+            {
+                continue;
+            }
+            for (int j = i + 1; j < goEntries.size(); j++)
+            {
+                GOEntry term2 = goEntries.get(j);
+                if (!(term2.getGeneSymbols().size() >= min && term2.getGeneSymbols().size() <= max))
+                {
+                    continue;
+                }
+
+                HashSet<String> sharedGenes = intersect(term1.getGeneSymbols(), term2.getGeneSymbols());
+
+                if (sharedGenes.isEmpty())
+                {
+                    continue;
+                }
+
+                int numOverlapping = sharedGenes.size();
+                boolean isRealtive = false;
+                if (term1.getReachableGoIDs().contains(term2.getId()) || term2.getReachableGoIDs().contains(term1.getId()))
+                {
+                    isRealtive = true;
+                }
+
+                // moved logic to extra class, too crowded in DAG and EA
+                PathComputer smartPath = new PathComputer(term1, term2);
+                int shortestPath = smartPath.calculateShortestPath();
+                double maxOvPct = 100.0 * (double) numOverlapping / Math.min(term1.getGeneSymbols().size(), term2.getGeneSymbols().size());
+
+                buff.write("\n" + term1.getId() + "\t" + term2.getId() + "\t" + isRealtive + "\t" + shortestPath + "\t" + numOverlapping + "\t" + maxOvPct);
+            }
+        }
+        buff.flush();
+        logger.info(String.format("Time needed for Collecting GO features: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
     public void analyze() throws IOException
@@ -175,46 +222,6 @@ public class EnrichmentAnalysis
 
         HypergeometricDistribution hg = new HypergeometricDistribution(N, K, n);
         return hg.upperCumulativeProbability(k);
-    }
-
-    public ArrayList<Double> calculateBH_FDROld(ArrayList<Double> pValues)
-    {
-        int m = pValues.size();
-        ArrayList<Double> sortedPValues = new ArrayList<>(pValues);
-        ArrayList<Double> bhAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 1.0));
-
-        HashMap<Double, Integer> pValueToIndex = new HashMap<>();
-        for (int i = 0; i < m; i++)
-        {
-            pValueToIndex.put(pValues.get(i), i);
-        }
-
-        sortedPValues.sort(Double::compareTo);
-
-        for (int i = 0; i < m; i++)
-        {
-            int rank = i + 1;
-            double rawPValue = sortedPValues.get(i);
-            double adjustedPValue = rawPValue * m / rank;
-            bhAdjustedPValues.set(i, Math.min(adjustedPValue, 1.0));
-        }
-
-        for (int i = m - 2; i >= 0; i--)
-        {
-            if (bhAdjustedPValues.get(i) > bhAdjustedPValues.get(i + 1))
-            {
-                bhAdjustedPValues.set(i, bhAdjustedPValues.get(i + 1));
-            }
-        }
-
-        ArrayList<Double> finalAdjustedPValues = new ArrayList<>(Collections.nCopies(m, 1.0));
-        for (int i = 0; i < m; i++)
-        {
-            int originalIndex = pValueToIndex.get(sortedPValues.get(i));
-            finalAdjustedPValues.set(originalIndex, bhAdjustedPValues.get(i));
-        }
-
-        return finalAdjustedPValues;
     }
 
     public ArrayList<Double> calculateBH_FDR(ArrayList<Double> pValues)
