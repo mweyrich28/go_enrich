@@ -4,6 +4,8 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math3.distribution.HypergeometricDistribution;
@@ -96,6 +98,59 @@ public class EnrichmentAnalysis
         logger.info(String.format("Time needed for Collecting GO features: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
+    public void goFeaturesParallelized(String pathToOverlapOut) throws IOException
+    {
+        logger.info("Collecting GO features...");
+        double start = System.currentTimeMillis();
+
+        List<GOEntry> goEntries = new ArrayList<>(dag.getNodeMap().values());
+        int size = goEntries.size();
+
+        ConcurrentLinkedQueue<String> results = new ConcurrentLinkedQueue<>();
+        results.add("term1\tterm2\tis_relative\tpath_length\tnum_overlapping\tmax_ov_percent");
+
+        IntStream.range(0, size).parallel().forEach(i -> {
+            GOEntry term1 = goEntries.get(i);
+            if (!(term1.getGeneSymbols().size() >= min && term1.getGeneSymbols().size() <= max))
+            {
+                return;
+            }
+
+            for (int j = i + 1; j < size; j++)
+            {
+                GOEntry term2 = goEntries.get(j);
+                if (!(term2.getGeneSymbols().size() >= min && term2.getGeneSymbols().size() <= max))
+                {
+                    continue;
+                }
+
+                int numOverlapping = smartIntersect(term1.getGeneSymbols(), term2.getGeneSymbols());
+                if (numOverlapping == 0)
+                {
+                    continue;
+                }
+
+                boolean isRelative = term1.getReachableGoIDs().contains(term2.getId()) || term2.getReachableGoIDs().contains(term1.getId());
+
+                PathComputer smartPath = new PathComputer(term1, term2);
+                int shortestPath = smartPath.calculateShortestPath();
+
+                double maxOvPct = 100.0 * (double) numOverlapping / Math.min(term1.getGeneSymbols().size(), term2.getGeneSymbols().size());
+
+                results.add(term1.getId() + "\t" + term2.getId() + "\t" + isRelative + "\t" + shortestPath + "\t" + numOverlapping + "\t" + maxOvPct);
+            }
+        });
+
+        BufferedWriter buff = new BufferedWriter(new FileWriter(pathToOverlapOut));
+        for (String line : results)
+        {
+            buff.write(line);
+            buff.write("\n");
+        }
+        buff.flush();
+        logger.info(String.format("Time needed for Collecting GO features: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
+    }
+
     public void analyze() throws IOException
     {
         logger.info("Starting gene set enrichment analysis...");
@@ -114,48 +169,30 @@ public class EnrichmentAnalysis
                 continue;
             }
 
-            // -------------------- id -------------------------
             AnalysisEntry entry = new AnalysisEntry(go.getId());
             rows.add(entry);
 
 
-            // --------- annot ----------
             entry.setName(go.getAnnot());
 
-            // -------------------------------- size -----------------------------------------
-            //            HashSet<String> overlappingEnriched = intersect(go.getGeneSymbols(), enrichedAll);
-            //            entry.setSize(overlappingEnriched.size());
             int n = smartIntersect(go.getGeneSymbols(), enrichedAll);
             entry.setSize(n);
 
-            // ------- is_true -----------
             entry.setIs_true(go.isTrue());
 
-            // ----------------------- noverlap -----------------------------------------------
-            //            HashSet<String> overlappingSigsInGo = intersect(go.getGeneSymbols(), enrichedSigs);
-            //            entry.setNoverlap(overlappingSigsInGo.size());
             int k = smartIntersect(go.getGeneSymbols(), enrichedSigs);
             entry.setNoverlap(k);
 
-            // --------------------------- hg_pval ---------------------------------------------------
-            //            HashSet<String> overlappingTotal = intersect(dag.getRoot().getGeneSymbols(), enrichedAll);
-            //            HashSet<String> overlappingSigs = intersect(dag.getRoot().getGeneSymbols(), enrichedSigs);
-            //            double hgpval = calcHgPval(overlappingTotal, overlappingEnriched, overlappingSigs, overlappingSigsInGo);
             int N = smartIntersect(dag.getRoot().getGeneSymbols(), enrichedAll);
             int K = smartIntersect(dag.getRoot().getGeneSymbols(), enrichedSigs);
             double hgpval = calcHgPval(N, n, K, k);
             entry.setHg_pval(hgpval);
             hgPvalsList.add(hgpval);
 
-            // --------- fej_pval -------------------
-            //            double fejpval = calFejPval(overlappingTotal, overlappingEnriched, overlappingSigs, overlappingSigsInGo);
-            //            entry.setFej_pval(fejpval);
-            //            fejPvalsList.add(fejpval);
             double fejpval = calFejPval(N, n, K, k);
             entry.setFej_pval(fejpval);
             fejPvalsList.add(fejpval);
 
-            // ---------------- ks_stat, ks_pval ------------------------------
             HashSet<String> bg = new HashSet<>(dag.getRoot().getGeneSymbols());
             HashSet<String> overlappingEnriched = intersect(go.getGeneSymbols(), enrichedAll);
             bg.removeAll(overlappingEnriched);
@@ -165,7 +202,6 @@ public class EnrichmentAnalysis
             entry.setKs_pval(ksStats[1]);
             ksPvalsList.add(ksStats[1]);
 
-            // ----------- shortest_path_to_a_true ------------------
             if (go.isTrue() || dag.getTrueGoEntries().isEmpty())
             {
                 entry.setShortest_path_to_a_true("");
@@ -178,8 +214,6 @@ public class EnrichmentAnalysis
 
         }
 
-        // -------------------- fdrs ---------------------------
-        double s = System.currentTimeMillis();
         ArrayList<Double> adjHgPvals = calculateBH_FDR(hgPvalsList);
         ArrayList<Double> adjFejPvals = calculateBH_FDR(fejPvalsList);
         ArrayList<Double> adjKsPvals = calculateBH_FDR(ksPvalsList);
@@ -200,7 +234,8 @@ public class EnrichmentAnalysis
         logger.info(String.format("Time needed for Analysis: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
-    public void analyzeParallelized() throws IOException {
+    public void analyzeParallelized() throws IOException
+    {
         logger.info("Starting gene set enrichment analysis...");
         BufferedWriter buff = new BufferedWriter(new FileWriter(out));
         double start = System.currentTimeMillis();
@@ -210,7 +245,8 @@ public class EnrichmentAnalysis
         List<AnalysisEntry> entries = Collections.synchronizedList(new ArrayList<>());
 
         dag.getNodeMap().values().parallelStream().forEach(go -> {
-            if (!(go.getGeneSymbols().size() >= min && go.getGeneSymbols().size() <= max)) {
+            if (!(go.getGeneSymbols().size() >= min && go.getGeneSymbols().size() <= max))
+            {
                 return;
             }
 
@@ -241,9 +277,12 @@ public class EnrichmentAnalysis
             entry.setKs_stat(ksStats[0]);
             entry.setKs_pval(ksStats[1]);
 
-            if (go.isTrue() || dag.getTrueGoEntries().isEmpty()) {
+            if (go.isTrue() || dag.getTrueGoEntries().isEmpty())
+            {
                 entry.setShortest_path_to_a_true("");
-            } else {
+            }
+            else
+            {
                 String path = go.getShortestPathToTrue(dag.getTrueGoIds(), dag);
                 entry.setShortest_path_to_a_true(path);
             }
@@ -261,7 +300,8 @@ public class EnrichmentAnalysis
         List<Double> adjFejPvals = calculateBH_FDR(fejPvals);
         List<Double> adjKsPvals = calculateBH_FDR(ksPvals);
 
-        for (int i = 0; i < entries.size(); i++) {
+        for (int i = 0; i < entries.size(); i++)
+        {
             entries.get(i).setHg_fdr(adjHgPvals.get(i));
             entries.get(i).setFej_fdr(adjFejPvals.get(i));
             entries.get(i).setKs_fdr(adjKsPvals.get(i));
@@ -301,7 +341,7 @@ public class EnrichmentAnalysis
     public double calFejPval(int N, int n, int K, int k)
     {
         HypergeometricDistribution hg = new HypergeometricDistribution(N - 1, K - 1, n - 1);
-        return hg.upperCumulativeProbability(k- 1);
+        return hg.upperCumulativeProbability(k - 1);
     }
 
     public ArrayList<Double> calculateBH_FDR(List<Double> pValues)

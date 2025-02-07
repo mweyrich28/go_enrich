@@ -153,7 +153,7 @@ public class DAG
     {
         int[] counter = new int[1];
         root.countLeafs(counter);
-        return  counter[0];
+        return counter[0];
     }
 
     public void computePathLengths()
@@ -190,9 +190,17 @@ public class DAG
     public void writeGeneSetSizes(String outPath) throws IOException
     {
         BufferedWriter buff = new BufferedWriter(new FileWriter(outPath));
+        boolean first = false;
         for (GOEntry go : this.nodeMap.values())
         {
-            buff.write(go.getId() + "\t" + go.getGeneSymbols().size());
+            if (first)
+            {
+                buff.write(go.getId() + "\t" + go.getGeneSymbols().size());
+            }
+            else
+            {
+                buff.write("\n" + go.getId() + "\t" + go.getGeneSymbols().size());
+            }
         }
     }
 }

@@ -78,17 +78,19 @@ public class Main
 
 
             // extra analysis for report
-//            dag.initLeafNodes();
-//            System.out.println("Num genes " + dag.getRoot().getGeneSymbols().size());
-//            System.out.println("Num gene sets " + dag.getNodeMap().size());
-//            System.out.println("Num leafs " + dag.computeNumLeafs());
-//            dag.computePathLengths();
+            dag.initLeafNodes();
+            System.out.println("Num genes " + dag.getRoot().getGeneSymbols().size());
+            System.out.println("Num gene sets " + dag.getNodeMap().size());
+            System.out.println("Num leafs " + dag.computeNumLeafs());
+            dag.computePathLengths();
+            dag.writeGeneSetSizes(mappingType + "_gosizes.tsv");
 
 
             if (overlapOut != null)
             {
                 // generate overlap file
-                enrichmentAnalysis.goFeatures(overlapOut);
+//                enrichmentAnalysis.goFeatures(overlapOut);
+                enrichmentAnalysis.goFeaturesParallelized(overlapOut);
             }
         }
         catch (ArgumentParserException e)
