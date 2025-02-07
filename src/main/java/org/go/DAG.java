@@ -3,6 +3,9 @@ package org.go;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 public class DAG
@@ -10,6 +13,7 @@ public class DAG
 
     private static final Logger logger = LoggerFactory.getLogger(DAG.class);
     private HashMap<String, GOEntry> nodeMap;
+    private HashMap<String, GOEntry> leafMap;
     private String type;
     private GOEntry root = null;
     private HashSet<GOEntry> trueGoEntries;
@@ -129,6 +133,13 @@ public class DAG
         logger.info(String.format("Time needed for optimizing paths: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
+    public void initLeafNodes()
+    {
+        HashMap<String, GOEntry> leafNodes = new HashMap<>();
+        root.getLeafs(leafNodes);
+        this.leafMap = leafNodes;
+    }
+
     public void calculateDepth()
     {
         logger.info("Calculating depth...");
@@ -138,8 +149,50 @@ public class DAG
         logger.info(String.format("Time needed for calculating depth: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
+    public int computeNumLeafs()
+    {
+        int[] counter = new int[1];
+        root.countLeafs(counter);
+        return  counter[0];
+    }
+
+    public void computePathLengths()
+    {
+        this.root.calcShortestAndLongestPath(0);
+        int shortestPath = Integer.MAX_VALUE;
+        int longestPath = Integer.MIN_VALUE;
+        String goIdLongest = null;
+        String goIdShortes = null;
+        for (GOEntry leaf : leafMap.values())
+        {
+            if (leaf.getlPathRoot() > longestPath)
+            {
+                longestPath = leaf.getlPathRoot();
+                goIdLongest = leaf.getId();
+            }
+
+            if (leaf.getsPathRoot() < shortestPath)
+            {
+                shortestPath = leaf.getsPathRoot();
+                goIdShortes = leaf.getId();
+            }
+        }
+        System.out.println("Shortest path: " + goIdShortes + " with length " + shortestPath);
+        System.out.println("Logest path: " + goIdLongest + " with length " + longestPath);
+    }
+
+
     public GOEntry getRoot()
     {
         return root;
+    }
+
+    public void writeGeneSetSizes(String outPath) throws IOException
+    {
+        BufferedWriter buff = new BufferedWriter(new FileWriter(outPath));
+        for (GOEntry go : this.nodeMap.values())
+        {
+            buff.write(go.getId() + "\t" + go.getGeneSymbols().size());
+        }
     }
 }

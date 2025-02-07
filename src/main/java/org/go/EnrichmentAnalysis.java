@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.apache.commons.math3.distribution.HypergeometricDistribution;
 import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest;
@@ -70,14 +71,13 @@ public class EnrichmentAnalysis
                     continue;
                 }
 
-                HashSet<String> sharedGenes = intersect(term1.getGeneSymbols(), term2.getGeneSymbols());
+                int numOverlapping = smartIntersect(term1.getGeneSymbols(), term2.getGeneSymbols());
 
-                if (sharedGenes.isEmpty())
+                if (numOverlapping == 0)
                 {
                     continue;
                 }
 
-                int numOverlapping = sharedGenes.size();
                 boolean isRealtive = false;
                 if (term1.getReachableGoIDs().contains(term2.getId()) || term2.getReachableGoIDs().contains(term1.getId()))
                 {
@@ -123,30 +123,41 @@ public class EnrichmentAnalysis
             entry.setName(go.getAnnot());
 
             // -------------------------------- size -----------------------------------------
-            HashSet<String> overlappingEnriched = intersect(go.getGeneSymbols(), enrichedAll);
-            entry.setSize(overlappingEnriched.size());
+            //            HashSet<String> overlappingEnriched = intersect(go.getGeneSymbols(), enrichedAll);
+            //            entry.setSize(overlappingEnriched.size());
+            int n = smartIntersect(go.getGeneSymbols(), enrichedAll);
+            entry.setSize(n);
 
             // ------- is_true -----------
             entry.setIs_true(go.isTrue());
 
             // ----------------------- noverlap -----------------------------------------------
-            HashSet<String> overlappingSigsInGo = intersect(go.getGeneSymbols(), enrichedSigs);
-            entry.setNoverlap(overlappingSigsInGo.size());
+            //            HashSet<String> overlappingSigsInGo = intersect(go.getGeneSymbols(), enrichedSigs);
+            //            entry.setNoverlap(overlappingSigsInGo.size());
+            int k = smartIntersect(go.getGeneSymbols(), enrichedSigs);
+            entry.setNoverlap(k);
 
             // --------------------------- hg_pval ---------------------------------------------------
-            HashSet<String> overlappingTotal = intersect(dag.getRoot().getGeneSymbols(), enrichedAll);
-            HashSet<String> overlappingSigs = intersect(dag.getRoot().getGeneSymbols(), enrichedSigs);
-            double hgpval = calcHgPval(overlappingTotal, overlappingEnriched, overlappingSigs, overlappingSigsInGo);
+            //            HashSet<String> overlappingTotal = intersect(dag.getRoot().getGeneSymbols(), enrichedAll);
+            //            HashSet<String> overlappingSigs = intersect(dag.getRoot().getGeneSymbols(), enrichedSigs);
+            //            double hgpval = calcHgPval(overlappingTotal, overlappingEnriched, overlappingSigs, overlappingSigsInGo);
+            int N = smartIntersect(dag.getRoot().getGeneSymbols(), enrichedAll);
+            int K = smartIntersect(dag.getRoot().getGeneSymbols(), enrichedSigs);
+            double hgpval = calcHgPval(N, n, K, k);
             entry.setHg_pval(hgpval);
             hgPvalsList.add(hgpval);
 
             // --------- fej_pval -------------------
-            double fejpval = calFejPval(overlappingTotal, overlappingEnriched, overlappingSigs, overlappingSigsInGo);
+            //            double fejpval = calFejPval(overlappingTotal, overlappingEnriched, overlappingSigs, overlappingSigsInGo);
+            //            entry.setFej_pval(fejpval);
+            //            fejPvalsList.add(fejpval);
+            double fejpval = calFejPval(N, n, K, k);
             entry.setFej_pval(fejpval);
             fejPvalsList.add(fejpval);
 
             // ---------------- ks_stat, ks_pval ------------------------------
             HashSet<String> bg = new HashSet<>(dag.getRoot().getGeneSymbols());
+            HashSet<String> overlappingEnriched = intersect(go.getGeneSymbols(), enrichedAll);
             bg.removeAll(overlappingEnriched);
 
             double[] ksStats = calcKS(overlappingEnriched, bg);
@@ -189,6 +200,80 @@ public class EnrichmentAnalysis
         logger.info(String.format("Time needed for Analysis: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
     }
 
+    public void analyzeParallelized() throws IOException {
+        logger.info("Starting gene set enrichment analysis...");
+        BufferedWriter buff = new BufferedWriter(new FileWriter(out));
+        double start = System.currentTimeMillis();
+
+        buff.write("term\tname\tsize\tis_true\tnoverlap\thg_pval\thg_fdr\tfej_pval\tfej_fdr\tks_stat\tks_pval\tks_fdr\tshortest_path_to_a_true");
+
+        List<AnalysisEntry> entries = Collections.synchronizedList(new ArrayList<>());
+
+        dag.getNodeMap().values().parallelStream().forEach(go -> {
+            if (!(go.getGeneSymbols().size() >= min && go.getGeneSymbols().size() <= max)) {
+                return;
+            }
+
+            AnalysisEntry entry = new AnalysisEntry(go.getId());
+            entry.setName(go.getAnnot());
+
+            int n = smartIntersect(go.getGeneSymbols(), enrichedAll);
+            entry.setSize(n);
+            entry.setIs_true(go.isTrue());
+
+            int k = smartIntersect(go.getGeneSymbols(), enrichedSigs);
+            entry.setNoverlap(k);
+
+            int N = smartIntersect(dag.getRoot().getGeneSymbols(), enrichedAll);
+            int K = smartIntersect(dag.getRoot().getGeneSymbols(), enrichedSigs);
+
+            double hgpval = calcHgPval(N, n, K, k);
+            entry.setHg_pval(hgpval);
+
+            double fejpval = calFejPval(N, n, K, k);
+            entry.setFej_pval(fejpval);
+
+            HashSet<String> bg = new HashSet<>(dag.getRoot().getGeneSymbols());
+            HashSet<String> overlappingEnriched = intersect(go.getGeneSymbols(), enrichedAll);
+            bg.removeAll(overlappingEnriched);
+
+            double[] ksStats = calcKS(overlappingEnriched, bg);
+            entry.setKs_stat(ksStats[0]);
+            entry.setKs_pval(ksStats[1]);
+
+            if (go.isTrue() || dag.getTrueGoEntries().isEmpty()) {
+                entry.setShortest_path_to_a_true("");
+            } else {
+                String path = go.getShortestPathToTrue(dag.getTrueGoIds(), dag);
+                entry.setShortest_path_to_a_true(path);
+            }
+
+            entries.add(entry);
+        });
+
+        entries.sort(Comparator.comparing(AnalysisEntry::getTerm));
+
+        List<Double> hgPvals = entries.stream().map(AnalysisEntry::getHg_pval).collect(Collectors.toList());
+        List<Double> fejPvals = entries.stream().map(AnalysisEntry::getFej_pval).collect(Collectors.toList());
+        List<Double> ksPvals = entries.stream().map(AnalysisEntry::getKs_pval).collect(Collectors.toList());
+
+        List<Double> adjHgPvals = calculateBH_FDR(hgPvals);
+        List<Double> adjFejPvals = calculateBH_FDR(fejPvals);
+        List<Double> adjKsPvals = calculateBH_FDR(ksPvals);
+
+        for (int i = 0; i < entries.size(); i++) {
+            entries.get(i).setHg_fdr(adjHgPvals.get(i));
+            entries.get(i).setFej_fdr(adjFejPvals.get(i));
+            entries.get(i).setKs_fdr(adjKsPvals.get(i));
+
+            buff.write("\n");
+            buff.write(entries.get(i).toString());
+        }
+
+        buff.flush();
+        logger.info(String.format("Time needed for Analysis: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
+    }
+
     public HashSet<String> intersect(HashSet<String> A, HashSet<String> B)
     {
         HashSet<String> intersection = new HashSet<>(A);
@@ -196,35 +281,30 @@ public class EnrichmentAnalysis
         return intersection;
     }
 
-    public double calcHgPval(HashSet<String> overlappingTotal,
-                             HashSet<String> overlappingEnriched,
-                             HashSet<String> overlappingSigs,
-                             HashSet<String> overlappingSigsInGO)
+    public int smartIntersect(HashSet<String> A, HashSet<String> B)
     {
-        int N = overlappingTotal.size();
-        int n = overlappingEnriched.size();
-        int K = overlappingSigs.size();
-        int k = overlappingSigsInGO.size();
+        int count = 0;
+        for (String item : A)
+        {
+            if (B.contains(item)) count++;
+        }
+        return count;
+    }
 
+
+    public double calcHgPval(int N, int n, int K, int k)
+    {
         HypergeometricDistribution hg = new HypergeometricDistribution(N, K, n);
         return hg.upperCumulativeProbability(k);
     }
 
-    public double calFejPval(HashSet<String> overlappingTotal,
-                             HashSet<String> overlappingEnriched,
-                             HashSet<String> overlappingSigs,
-                             HashSet<String> overlappingSigsInGO)
+    public double calFejPval(int N, int n, int K, int k)
     {
-        int N = overlappingTotal.size() - 1;
-        int n = overlappingEnriched.size() - 1;
-        int K = overlappingSigs.size() - 1;
-        int k = overlappingSigsInGO.size() - 1;
-
-        HypergeometricDistribution hg = new HypergeometricDistribution(N, K, n);
-        return hg.upperCumulativeProbability(k);
+        HypergeometricDistribution hg = new HypergeometricDistribution(N - 1, K - 1, n - 1);
+        return hg.upperCumulativeProbability(k- 1);
     }
 
-    public ArrayList<Double> calculateBH_FDR(ArrayList<Double> pValues)
+    public ArrayList<Double> calculateBH_FDR(List<Double> pValues)
     {
         int m = pValues.size();
         ArrayList<Double> sortedPValues = new ArrayList<>(pValues);

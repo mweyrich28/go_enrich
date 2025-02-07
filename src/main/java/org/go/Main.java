@@ -73,7 +73,17 @@ public class Main
 
             // init main analysis class
             EnrichmentAnalysis enrichmentAnalysis = new EnrichmentAnalysis(dag, enrichedGeneMap, min, max, out);
-            enrichmentAnalysis.analyze();
+//            enrichmentAnalysis.analyze();
+            enrichmentAnalysis.analyzeParallelized();
+
+
+            // extra analysis for report
+//            dag.initLeafNodes();
+//            System.out.println("Num genes " + dag.getRoot().getGeneSymbols().size());
+//            System.out.println("Num gene sets " + dag.getNodeMap().size());
+//            System.out.println("Num leafs " + dag.computeNumLeafs());
+//            dag.computePathLengths();
+
 
             if (overlapOut != null)
             {

@@ -6,6 +6,9 @@ public class GOEntry
 {
 
     private String id;
+    private int sPathRoot = Integer.MAX_VALUE;
+    private int lPathRoot = Integer.MIN_VALUE;
+    private boolean countedAsLeaf = false;
     private String annot;
     private boolean isTrue;
     private ArrayList<GOEntry> parents;
@@ -232,6 +235,7 @@ public class GOEntry
             child.signalShortestPathDown(k, trueGo);
         }
     }
+
     public void propagateShortestPaths(GOEntry trueGo)
     {
         LinkerClass currentPath = highwayMap.get(trueGo);
@@ -281,4 +285,68 @@ public class GOEntry
         return parents;
     }
 
+    public void getLeafs(HashMap<String, GOEntry> leafs)
+    {
+        if (this.children.isEmpty() && !leafs.containsKey(this.getId()))
+        {
+            leafs.put(this.id, this);
+        }
+        else
+        {
+            for (GOEntry child : children)
+            {
+                child.getLeafs(leafs);
+            }
+        }
+    }
+
+    public void countLeafs(int[] counter)
+    {
+        if (this.children.isEmpty() && !countedAsLeaf)
+        {
+            counter[0]++;
+            countedAsLeaf = true;
+        }
+        else
+        {
+            for (GOEntry child : this.children)
+            {
+                child.countLeafs(counter);
+            }
+        }
+    }
+
+    public void calcShortestAndLongestPath(int k)
+    {
+        if (this.children.isEmpty())
+        {
+            if (k < this.sPathRoot)
+            {
+                this.sPathRoot = k;
+            }
+            if (k > this.lPathRoot)
+            {
+                this.lPathRoot = k;
+            }
+        }
+        else
+        {
+            k++;
+            for (GOEntry child : children)
+            {
+                child.calcShortestAndLongestPath(k);
+            }
+        }
+
+    }
+
+    public int getlPathRoot()
+    {
+        return lPathRoot;
+    }
+
+    public int getsPathRoot()
+    {
+        return sPathRoot;
+    }
 }
