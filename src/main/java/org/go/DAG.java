@@ -190,17 +190,39 @@ public class DAG
     public void writeGeneSetSizes(String outPath) throws IOException
     {
         BufferedWriter buff = new BufferedWriter(new FileWriter(outPath));
-        boolean first = false;
+        boolean first = true;
         for (GOEntry go : this.nodeMap.values())
         {
             if (first)
             {
                 buff.write(go.getId() + "\t" + go.getGeneSymbols().size());
+                first = false;
             }
             else
             {
                 buff.write("\n" + go.getId() + "\t" + go.getGeneSymbols().size());
             }
         }
+        buff.flush();
+    }
+
+    public void writeDiffSize(String out) throws IOException
+    {
+        ArrayList<Integer> sizes = root.compareSizes(new ArrayList<>());
+
+        BufferedWriter buff = new BufferedWriter(new FileWriter(out));
+        boolean first = true;
+        for (Integer i : sizes)
+        {
+            if (first) {
+                buff.write("" + i);
+                first = false;
+            }
+            else
+            {
+                buff.write("\n" + i);
+            }
+        }
+        buff.flush();
     }
 }

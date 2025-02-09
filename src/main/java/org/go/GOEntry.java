@@ -349,4 +349,16 @@ public class GOEntry
     {
         return sPathRoot;
     }
+
+    public ArrayList<Integer> compareSizes(ArrayList<Integer> sizes)
+    {
+        int currentSize = this.getGeneSymbols().size();
+        for (GOEntry child: children)
+        {
+            int diff = currentSize - child.getGeneSymbols().size();
+            sizes.add(diff);
+            child.compareSizes(sizes);
+        }
+        return sizes;
+    }
 }

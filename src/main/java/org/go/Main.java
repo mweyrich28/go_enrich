@@ -67,13 +67,12 @@ public class Main
 
             // fully init DAG
             dag.propagateGenes();
-            dag.calculateDepth();
             dag.propagateIds();
             dag.optimizePathsToTrue();
 
             // init main analysis class
             EnrichmentAnalysis enrichmentAnalysis = new EnrichmentAnalysis(dag, enrichedGeneMap, min, max, out);
-//            enrichmentAnalysis.analyze();
+            //            enrichmentAnalysis.analyze();
             enrichmentAnalysis.analyzeParallelized();
 
 
@@ -83,13 +82,13 @@ public class Main
             System.out.println("Num gene sets " + dag.getNodeMap().size());
             System.out.println("Num leafs " + dag.computeNumLeafs());
             dag.computePathLengths();
-            dag.writeGeneSetSizes(mappingType + "_gosizes.tsv");
+            dag.writeGeneSetSizes(mappingType + "_goSizes.tsv");
+            dag.writeDiffSize(mappingType + "_goDiff.tsv");
 
 
             if (overlapOut != null)
             {
-                // generate overlap file
-//                enrichmentAnalysis.goFeatures(overlapOut);
+                // enrichmentAnalysis.goFeatures(overlapOut);
                 enrichmentAnalysis.goFeaturesParallelized(overlapOut);
             }
         }
