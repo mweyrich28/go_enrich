@@ -1,5 +1,5 @@
 library('ggplot2')
-library('data.table')
+library('data.table') 
 library('patchwork')
 library('ggrepel')
 library('dplyr')
@@ -27,7 +27,7 @@ p <- ggplot(combined_sizes, aes(x = Type, y = Size, color = Type)) +
   scale_y_log10() +
   xlab("Type") +
   ylab("Size") +
-  ggtitle("GO Size by Type") +
+  ggtitle("GO Size by Mapping Type") +
   theme_bw(base_size = 14) +
   theme(
     plot.title = element_text(hjust = 0.5, size = 18, face = "bold"),
@@ -40,14 +40,14 @@ p <- ggplot(combined_sizes, aes(x = Type, y = Size, color = Type)) +
   )
 
 p
-ggsave(p, filename="./../report/plots/goSizesByType.png", dpi=300, height=10, width = 6)
+# ggsave(p, filename="./../report/plots/goSizes.png", dpi=300, height=10, width = 6)
 
-p <- ggplot(combined_diff_sizes, aes(x = Type, y = Size, color = Type)) +
+q <- ggplot(combined_diff_sizes, aes(x = Type, y = Size, color = Type)) +
   geom_boxplot(alpha = 0.8) +
   scale_y_log10() +
   xlab("Type") +
   ylab("Size") +
-  ggtitle("Boxplot of Size Differences of Parents to their Children by Type") +
+  ggtitle("Size Differences of Parents to their Children \n by Mapping Type") +
   theme_bw(base_size = 14) +
   theme(
     plot.title = element_text(hjust = 0.5, size = 18, face = "bold"),
@@ -58,7 +58,10 @@ p <- ggplot(combined_diff_sizes, aes(x = Type, y = Size, color = Type)) +
     panel.grid.major = element_line(color = "gray", size = 0.5), 
     panel.grid.minor = element_line(color = "lightgray", size = 0.25)
   )
-ggsave(p, filename="./../report/plots/goSizediffByType.png", dpi=300, , height=10, width = 6)
+# ggsave(p, filename="./../report/plots/goSizediffByType.png", dpi=300, , height=10, width = 6)
+plot  <- p | q
+plot
+ggsave(plot, filename="./../report/plots/goSizes.png", dpi=300, height=10, width = 12)
 
 
 # min = 50, max = 500
@@ -69,8 +72,45 @@ ens_out <- fread("./../ens_out.out")
 ens_out[, shortest_path_to_a_true := NULL]
 ens_out[, Type := "ENSEMBL"]
 
-combined_out  <- rbind(go_out, ens_out)
+sig_ks  <- go_out[ks_fdr <= 0.05, ]
 
+sig_ks[, term]
+gProfiler <- readLines("./gProfiler_BP.txt")
+gProfiler
+
+groundTruth  <- readLines("./groundTruth.txt")
+
+
+compare   <- list(
+  gProfiler = gProfiler,
+  JAR_GO = sig_ks[, term],
+  SoT = groundTruth
+)
+
+p <- plot(euler(compare), quantities = list(cex=2), labels=list(cex=2),fills = list(fill = c("#ea9d34","#eb6f92","#56949f")))
+p
+ggsave(p, filename="./../report/plots/go_mappingCompgProfiler.png", dpi=300,  height = 10, width = 12)
+
+ens_ks  <- ens_out[ks_fdr <= 0.05, ]
+
+ens_ks[, term]
+gProfiler <- readLines("./gProfiler_BP.txt")
+gProfiler
+
+
+compare   <- list(
+  gProfiler = gProfiler,
+  JAR_ENS = ens_ks[, term],
+  SoT = groundTruth
+)
+
+p <- plot(euler(compare), quantities = list(cex=2), labels=list(cex=2),fills = list(fill = c("#ea9d34","#eb6f92","#56949f")))
+p
+ggsave(p, filename="./../report/plots/ens_mappingCompgProfiler.png", dpi=300,  height = 10, width = 12)
+
+
+
+combined_out  <- rbind(go_out, ens_out)
 p <- ggplot(combined_out, aes(x = Type, y = ks_stat, color = Type)) +
   geom_boxplot(alpha = 0.8) +
   scale_y_log10() +
@@ -131,7 +171,7 @@ p <- ggplot(combined_out, aes(x = Type, y = fej_fdr, color = Type)) +
   scale_y_log10() +
   xlab("Type") +
   ylab("Enrichment Score") +
-  ggtitle("Boxplot of Benjamini Hochberg Adjusted feh P-Values(min=50, max=500)") +
+  ggtitle("Boxplot of Benjamini Hochberg Adjusted fej P-Values(min=50, max=500)") +
   theme_bw(base_size = 14) +
   theme(
     plot.title = element_text(hjust = 0.5, size = 18, face = "bold"),
@@ -226,7 +266,7 @@ ggsave(p, filename="./../report/plots/goScatt.png", dpi=300, height=10, width=15
 ens_scatt_log_fej <- ggplot(ens_out, aes(x = size, y = -log10(fej_fdr))) +
   geom_point(alpha = 0.7, color = 'blue') +
   labs(
-    title = "Scatter Plot of Gene Set Size vs FEJ-FDR (ENSEMBL Mapping)",
+    title = "Scatter Plot of Gene Set Size \nvs FEJ-FDR (ENSEMBL Mapping)",
     x = "Gene Set Size",
     y = "-log(FEJ-FDR)"
   ) +
@@ -240,7 +280,7 @@ ens_scatt_log_fej <- ggplot(ens_out, aes(x = size, y = -log10(fej_fdr))) +
 ens_scatt_log_ks <- ggplot(ens_out, aes(x = size, y = -log10(ks_fdr))) +
   geom_point(alpha = 0.7, color = 'blue') +
   labs(
-    title = "Scatter Plot of Gene Set Size vs KS-FDR (ENSEMBL Mapping)",
+    title = "Scatter Plot of Gene Set Size \n vs KS-FDR (ENSEMBL Mapping)",
     x = "Gene Set Size",
     y = "-log(KS-FDR)"
   ) +
@@ -252,3 +292,5 @@ ens_scatt_log_ks <- ggplot(ens_out, aes(x = size, y = -log10(ks_fdr))) +
   )
 p <- ens_scatt_log_fej| ens_scatt_log_ks
 ggsave(p, filename="./../report/plots/ensScatt.png", dpi=300, height=10, width=15)
+
+
