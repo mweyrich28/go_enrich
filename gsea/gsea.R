@@ -45,6 +45,7 @@ filtered_results <- fgsea_results[
 
 head(filtered_results)
 filtered_results <- filtered_results[, .(gs_exact_source, size, padj, ES)]
+filtered_results <- filtered_results[size >= 50 & size <= 500]
 write.table(filtered_results, "gsea_results.tsv", row.names = FALSE, sep="\t")
 
 
