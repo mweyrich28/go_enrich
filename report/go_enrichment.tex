@@ -64,8 +64,67 @@ for \textit{GSEA}.
 \section{Materials \& Methods}
 \subsection{Enrichment Methods}\label{sec:Enrichment-Methods}
 \subsubsection{Gene Set Over-representation Analysis}\label{sec:Gene-Set-Over-representation-Analysis}
+In \textit{ORA}, the first step is to define a gene list $L$ of \textbf{possible interesting genes} (genes having $padj \le 0.05$ or $abs(lfc) \ge 1.5$).
+Then, for each gene set $S$, an \textit{enrichment p-value} is calculated, representing the 
+probability of observing at least as many genes from $L$ in $S$, assuming a random selection from the background gene set (\cite{ORA}).
+This is commonly simulated using either a \textit{Hypergeometric Test} or the \textit{Fisher's Exact Test}.
+In our case we used \textit{Fisher's Exact Test} with the following parameters:
+\[
+    P(X \ge k) = 1 - \frac{\binom{K}{k} \cdot \binom{N-K}{n-k}}{\binom{N}{n}} 
+\]
+, where 
+\begin{itemize}
+    \item $N := |G \cap DE|$ 
+    \item $n := |g \cap DE|$ 
+    \item $K := |G \cap sDE|$ 
+    \item $k := |g \cap sDE|$ 
+\end{itemize}
+, with 
+\begin{itemize}
+    \item $G := $ All gene symbols of current \texttt{DAG}
+    \item $g := $ Gene symbols of current \texttt{GOEntry}
+    \item $DE := $ All observed differentially expressed genes 
+    \item $sDE :=$ Subset of $sDE \subseteq DE$ considered significant
+\end{itemize}
+
+After calculating all \textit{enrichment p-values}, they are corrected for multiple testing
+using the \textit{Benjamini-Hochberg} method.
+
+One problem in \textit{ORA} is, that we have to define the threshold and choose, whether we only want to
+analyze up-regulated or down-regulated genes, or both, which is not the case in \textit{GSEA}.
 
 \subsubsection{Gene Set Enrichment Analysis}\label{sec:Gene-Set-Enrichment-Analysis}
+\textit{GSEA} use a different approach to determine the significance of gene sets.
+It consists out of three main steps:
+\begin{enumerate}
+    \item Calculate the \textit{Enrichment Score (ES)} of a gene set
+    \item Evaluate the significance of the calculated Enrichment Score (through \textit{empirical p-value})
+    \item Correct the p-values for multiple testing (using \textit{Benjamini-Hochberg})
+\end{enumerate}
+
+In order to calculate the \textit{ES} for a given gene set $S$,
+the observed differentially expressed genes of an experiment are ranked
+based on their \textit{logFoldChange}, resulting in a \textit{ranked list} $L$.
+Important here is that all observed genes are used, where as in 
+\ref{sec:Gene-Set-Over-representation-Analysis} only the significantly differentially 
+expressed genes are used. 
+The \textit{ES} is then calculated by walking down the ranked list $L$ and
+calculating a \textit{running sum statistic} which increases when a gene
+is part of the gene set $S$ and decreases when it is not.
+The maximum value that is encountered during the walk is the \textit{ES} of the gene set $S$.
+The \textit{running sum statistic} utilizes a \textit{Kolmogorov-Smirnov} like statistic 
+that weights genes according to their \textit{logFoldChange} magnitude (\cite{GSEA}).
+
+
+The provided \textit{JAR} imports the \texttt{KolmogorovSmirnovTest Class} from \\
+\textit{org.apache.commons.math3.stat.inference} in order to calculate the
+\textit{Kolmogorov-Smirnov} statistic and p-value.
+We do not calculate the \textit{empirical p-value} for the \textit{ES} as it was 
+not required in the assignment, but usually it is more than required to
+run a permutation test to determine the true significance of the \textit{ES}
+in order to avoid too many false positives.
+
+
 
 \newpage
 \subsection{Java Programm}\label{sec:Java-Programm}
@@ -394,6 +453,13 @@ while the overall distribution of gene set sizes is similar for both mapping typ
 \end{figure}
 
 \subsection{Comparison with Online Tool gProfiler (ORA)}\label{sec:Comparison-of-ORA}
+
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./screenshots/gProfiler.png}
+    \caption{Filtering \textit{gProfiler} results to match \textit{"-minsize"} and \textit{"-maxsize"} parameters.}
+    \label{fig:-screenshots-gProfiler-png}
+\end{figure}
 \begin{figure}[htpb]
     \centering
     \begin{minipage}{0.49\textwidth}
