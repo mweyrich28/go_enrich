@@ -9,8 +9,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.go.util.FileUtils;
+import org.slf4j.LoggerFactory;
 
 public class Main
 {
@@ -18,12 +20,15 @@ public class Main
     public static HashSet<String> VALIDTYPES = new HashSet<>();
     public static HashSet<String> VALIDROOTS = new HashSet<>();
 
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(Main.class);
+
     public static void main(String[] args) throws IOException
     {
         ArgumentParser parser = ArgumentParsers.newFor("GoEnrich").build().defaultHelp(true).description("");
-
         try
         {
+            double start = System.currentTimeMillis();
+            logger.info("Starting with GO Enrichment Assignment 5");
             parser.addArgument("-obo").required(true).help("Path to obo file.");
             parser.addArgument("-root").required(true).help("Type of Ontology (molecular_function|biological_process|cellular_component).");
             parser.addArgument("-mapping").required(true).help("Path to mapping file (SYMBOL -> GO_ID).");
@@ -49,6 +54,9 @@ public class Main
             // validate params
             validateParams(root, mappingType);
 
+
+            logger.info("Parsing input files...");
+            double s2 = System.currentTimeMillis();
             // init DAG
             DAG dag = FileUtils.parseOBO(obo, root);
 
@@ -61,14 +69,18 @@ public class Main
             {
                 FileUtils.parseENSEMBL(mapping, dag);
             }
+            logger.info(String.format("Total time needed for parsing files: %s seconds", (System.currentTimeMillis() - s2) / 1000.0));
 
             // read enriched genes
             HashMap<String, Gene> enrichedGeneMap = FileUtils.parseEnrichedGenes(enrich, dag);
 
             // fully init DAG
+            logger.info("Starting to optimize DAG...");
+            s2 = System.currentTimeMillis();
             dag.propagateGenes();
             dag.propagateIds();
             dag.optimizePathsToTrue();
+            logger.info(String.format("Total time needed for optimizing DAG: %s seconds", (System.currentTimeMillis() - s2) / 1000.0));
 
             // init main analysis class
             EnrichmentAnalysis enrichmentAnalysis = new EnrichmentAnalysis(dag, enrichedGeneMap, min, max, out);
@@ -77,20 +89,20 @@ public class Main
 
 
             // extra analysis for report
-            dag.initLeafNodes();
-            System.out.println("Num genes " + dag.getRoot().getGeneSymbols().size());
-            System.out.println("Num gene sets " + dag.getNodeMap().size());
-            System.out.println("Num leafs " + dag.computeNumLeafs());
-            dag.computePathLengths();
-            dag.writeGeneSetSizes(mappingType + "_goSizes.tsv");
-            dag.writeDiffSize(mappingType + "_goDiff.tsv");
-
+            //            dag.initLeafNodes();
+            //            System.out.println("Num genes " + dag.getRoot().getGeneSymbols().size());
+            //            System.out.println("Num gene sets " + dag.getNodeMap().size());
+            //            System.out.println("Num leafs " + dag.computeNumLeafs());
+            //            dag.computePathLengths();
+            //            dag.writeGeneSetSizes(mappingType + "_goSizes.tsv");
+            //            dag.writeDiffSize(mappingType + "_goDiff.tsv");
 
             if (overlapOut != null)
             {
-                // enrichmentAnalysis.goFeatures(overlapOut);
+                //                 enrichmentAnalysis.goFeatures(overlapOut);
                 enrichmentAnalysis.goFeaturesParallelized(overlapOut);
             }
+            logger.info(String.format("Total time needed for Assignemnt 5: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
         }
         catch (ArgumentParserException e)
         {

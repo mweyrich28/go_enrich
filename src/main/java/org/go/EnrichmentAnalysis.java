@@ -149,6 +149,7 @@ public class EnrichmentAnalysis
         }
         buff.flush();
         logger.info(String.format("Time needed for Collecting GO features: %s seconds", (System.currentTimeMillis() - start) / 1000.0));
+
     }
 
     public void analyze() throws IOException
