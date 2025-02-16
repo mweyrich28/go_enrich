@@ -7,6 +7,8 @@ This report compares a custom Java implementation of both methods for a given li
 with two already existing tools, called [gProfiler](https://biit.cs.ut.ee/gprofiler/gost) `(perfoms ORA)` and [fgsea](https://bioconductor.org/packages/release/bioc/html/fgsea.html) `(performs GSEA)`.
 The Java implementation is also evaluated in terms of runtime and the properties of the `Directed Acyclic Graph (DAG)` used for the analysis.
 
+See [Report](./report/go_enrichment.pdf)
+
 ## Usage 
 ```bash
 java -jar go_enrichment.jar
